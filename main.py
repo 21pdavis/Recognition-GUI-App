@@ -1,8 +1,8 @@
-from render import TkinterGUI
+from render import MainGUI
 
 
 def main():
-    gui = TkinterGUI()
+    MainGUI()
 
 
 if __name__ == '__main__':
