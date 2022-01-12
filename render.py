@@ -28,9 +28,9 @@ class TkinterGUI:
 
         # init widgets
         self._buttons = {
-            'face_button': Button(self._window, background=self._colors['button_bg'], command=,
+            'face_button': Button(self._window, background=self._colors['button_bg'], command=self.__face_click,
                                   foreground=self._colors['button_fg'], text='Facial Recognition', width=0),
-            'hand_button': Button(self._window, background=self._colors['button_bg'],
+            'hand_button': Button(self._window, background=self._colors['button_bg'], command=self.__hand_click,
                                   foreground=self._colors['button_fg'], text='Hand Recognition', width=0)
         }
         self.labels = {
@@ -47,3 +47,9 @@ class TkinterGUI:
     def __place_elements(self):
         self.labels['title_label'].grid(row=0, column=0, sticky=W)
         self._buttons['face_button'].grid(row=2, column=0, sticky=W)
+
+    def __face_click(self):
+        pass
+
+    def __hand_click(self):
+        pass
