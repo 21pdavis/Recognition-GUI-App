@@ -89,7 +89,7 @@ class MainGUI:
 
     def _hand_click(self) -> None:
         # TODO: Implement toggling functionality with @run_detections property
-        pass
+        hand_detection = detections.HandDetection(video_frame=self._labels['video_frame_label'])
 
     def _exit_click(self) -> None:
         """ Safely stop execution of program """
