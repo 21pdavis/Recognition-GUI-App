@@ -53,7 +53,7 @@ class Detection(ABC):
         pil_image = Image.fromarray(shifted_img, mode="RGB")
 
         # mirror image for user convenience then resize to fit video frame
-        mirrored_img = ImageOps.mirror(image=pil_image).resize((920, 520), Image.ANTIALIAS)
+        mirrored_img = ImageOps.mirror(image=pil_image).resize((1024, 576), Image.ANTIALIAS)
 
         # convert mirrored_img to ImageTk.PhotoImage object
         final_img = ImageTk.PhotoImage(image=mirrored_img)

@@ -58,7 +58,7 @@ class MainGUI:
                                          borderwidth=2, bg=MainGUI.COLORS['image_bg']),
             # TODO: change dimensions of video frame to be closer to 16:9
             'video_frame_label': tk.Label(self._window, image=self._images['video_frame_default_image'],
-                                          bg=MainGUI.COLORS['image_bg'], height=520, width=920, borderwidth=2),
+                                          bg=MainGUI.COLORS['image_bg'], height=576, width=1024, borderwidth=2),
         }
 
         # additional window configuration and widget placement
