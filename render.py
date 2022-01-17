@@ -1,10 +1,12 @@
 import tkinter as tk
+from time import sleep
+
 from PIL import ImageTk, Image
 import detections
 
 
-# TODO: Make MainGUI inherit from tk.Frame class
-class MainGUI:
+# TODO: add scrollbar
+class MainGUI(tk.Frame):
     """
     MainGUI class initializes the tkinter GUI window and handles event listening
     """
@@ -22,10 +24,17 @@ class MainGUI:
         'image_bg': '#000000'
     }
 
-    def __init__(self) -> None:
+    def __init__(self, parent_root: tk.Tk) -> None:
         """ Initializes Tkinter window and starts mainloop() """
+        # call superclass, tk.Frame, __init__
+        super().__init__(master=parent_root)
+
         # init window
-        self._window: tk.Tk = tk.Tk()
+        self._root: tk.Tk = parent_root
+
+        # init Detection instance objects to scope them to the MainGUI (for toggling)
+        self._face_detection = None
+        self._hand_detection = None
 
         # init PIL PhotoImage objects (to be displayed in labels)
         self._images: dict = {
@@ -41,33 +50,35 @@ class MainGUI:
 
         # init widgets
         self._buttons: dict = {
-            'face_button': tk.Button(self._window, bg=MainGUI.COLORS['button_bg'], command=self._face_click,
+            'face_button': tk.Button(self._root, bg=MainGUI.COLORS['button_bg'], command=self._face_click,
                                      fg=MainGUI.COLORS['button_fg'], text='Toggle Facial Recognition', width=0),
-            'hand_button': tk.Button(self._window, bg=MainGUI.COLORS['button_bg'], command=self._hand_click,
+            'hand_button': tk.Button(self._root, bg=MainGUI.COLORS['button_bg'], command=self._hand_click,
                                      fg=MainGUI.COLORS['button_fg'], text='Toggle Hand Recognition', width=0),
-            'exit_button': tk.Button(self._window, bg=MainGUI.COLORS['button_bg'], command=self._exit_click,
+            'exit_button': tk.Button(self._root, bg=MainGUI.COLORS['button_bg'], command=self._exit_click,
                                      fg=MainGUI.COLORS['button_fg'], text='Exit', width=15)
         }
 
         self._labels: dict = {
-            'title_label': tk.Label(self._window, bg=MainGUI.COLORS['label_bg'], fg=MainGUI.COLORS['label_fg'],
+            'title_label': tk.Label(self._root, bg=MainGUI.COLORS['label_bg'], fg=MainGUI.COLORS['label_fg'],
                                     text='Welcome to the Recognition Suite!', font='none 20 bold'),
-            'face_image_label': tk.Label(self._window, image=self._images['face_image'], height=0, width=0,
+            'face_image_label': tk.Label(self._root, image=self._images['face_image'], height=0, width=0,
                                          borderwidth=2, bg=MainGUI.COLORS['image_bg']),
-            'hand_image_label': tk.Label(self._window, image=self._images['hand_image'], height=0, width=0,
+            'hand_image_label': tk.Label(self._root, image=self._images['hand_image'], height=0, width=0,
                                          borderwidth=2, bg=MainGUI.COLORS['image_bg']),
-            # TODO: change dimensions of video frame to be closer to 16:9
-            'video_frame_label': tk.Label(self._window, image=self._images['video_frame_default_image'],
+            'video_frame_label': tk.Label(self._root, image=self._images['video_frame_default_image'],
                                           bg=MainGUI.COLORS['image_bg'], height=576, width=1024, borderwidth=2),
         }
 
+        # self._scrollbar = tk.Scrollbar(self, orient="vertical")
+
         # additional window configuration and widget placement
-        self._window.title("Recognition Suite")
-        self._window.configure(bg=MainGUI.COLORS['window_bg'], height=0, width=0)
+        self._root.title("Recognition Suite")
+        self._root.configure(bg=MainGUI.COLORS['window_bg'], height=0, width=0)
         self._place_elements()
 
-        # start the mainloop() to open the GUI and begin event listening
-        self._window.mainloop()
+        # detection objects for later use
+        self._face_detection = detections.FaceDetection(video_frame=self._labels['video_frame_label'])
+        self._hand_detection = detections.HandDetection(video_frame=self._labels['video_frame_label'])
 
     def _place_elements(self) -> None:
         # ROW 0
@@ -83,14 +94,35 @@ class MainGUI:
         # ROW 4
         self._buttons['exit_button'].grid(row=4, column=0, padx=(25, 0), pady=(15, 10), sticky=tk.NW)  # exit bt
 
+    def _detection_click(self):
+        pass
+
     def _face_click(self) -> None:
-        # TODO: Implement toggling functionality with @run_detections property
-        face_detection = detections.FaceDetection(video_frame=self._labels['video_frame_label'])
+        # TODO: Consolidate click methods with detection type as argument
+        # TODO: Implement clean swap between face/hand detection
+        if self._face_detection.detections_running:
+            self._face_detection.detections_running = False
+            self._labels['video_frame_label'].configure(image=self._images['video_frame_default_image'])
+        else:
+            self._face_detection.detections_running = True
+            self._face_detection.begin_detection()
 
     def _hand_click(self) -> None:
-        # TODO: Implement toggling functionality with @run_detections property
-        hand_detection = detections.HandDetection(video_frame=self._labels['video_frame_label'])
+        # TODO: Consolidate click methods with detection type as argument
+        # TODO: Implement clean swap between face/hand detection
+        if self._hand_detection.detections_running:
+            self._hand_detection.detections_running = False
+            self._labels['video_frame_label'].configure(image=self._images['video_frame_default_image'])
+        else:
+            self._hand_detection.detections_running = True
+            self._hand_detection.begin_detection()
 
     def _exit_click(self) -> None:
         """ Safely stop execution of program """
-        pass
+        self._root.destroy()
+
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    MainGUI(root).grid(row=0, column=0, sticky=tk.NW)
+    root.mainloop()

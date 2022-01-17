@@ -10,13 +10,17 @@ from PIL import Image, ImageOps, ImageTk
 class Detection(ABC):
     @property
     @abstractmethod
-    def run_detections(self) -> bool:
+    def detections_running(self) -> bool:
         """ Getter for the bool flag used to start and stop detections """
 
-    @run_detections.setter
+    @detections_running.setter
     @abstractmethod
-    def run_detections(self, run_detections: bool) -> None:
+    def detections_running(self, run_detections: bool) -> None:
         """ Setter for the bool flag used to start and stop detections """
+
+    @abstractmethod
+    def begin_detection(self):
+        """ public function for starting detection """
 
     @abstractmethod
     def _detect(self, webcam_feed: cv2.VideoCapture) -> None:
@@ -65,27 +69,28 @@ class FaceDetection(Detection):
     FACE_CASCADE = cv2.CascadeClassifier('./cascades/haarcascade_frontalface_default.xml')
 
     def __init__(self, video_frame: tk.Label) -> None:
-        self._run_detections: bool = True
+        self._run_detections: bool = False
         self._video_frame: tk.Label = video_frame
         self._current_frame: ImageTk.PhotoImage = ImageTk.PhotoImage(Image.open('./images/video_frame_default.gif'))
-        self._video_frame.after(0, self._detect, cv2.VideoCapture(0, cv2.CAP_DSHOW))
 
     @property
-    def run_detections(self) -> bool:
+    def detections_running(self) -> bool:
         return self._run_detections
 
-    @run_detections.setter
-    def run_detections(self, run_detections: bool) -> None:
+    @detections_running.setter
+    def detections_running(self, run_detections: bool) -> None:
         self._run_detections = run_detections
+
+    def begin_detection(self) -> None:
+        self._video_frame.after(1, self._detect, cv2.VideoCapture(0, cv2.CAP_DSHOW))
 
     def _detect(self, webcam_feed: cv2.VideoCapture) -> None:
         if self._run_detections:
             img_array_with_detections: np.ndarray = self._analyze_image(webcam_feed)
             self._current_frame: ImageTk.PhotoImage = Detection._to_photo_image(img_array_with_detections)
             self._update_frame()
-
-        # recursively call _detect() method to perform detections on next frame
-        self._video_frame.after(1, self._detect, webcam_feed)
+            # recursively call _detect() method to perform detections on next frame
+            self._video_frame.after(1, self._detect, webcam_feed)
 
     def _analyze_image(self, webcam_feed: cv2.VideoCapture) -> np.ndarray:
         # read() returns a tuple of a read success flag and a 3D ndarray
@@ -95,7 +100,7 @@ class FaceDetection(Detection):
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
         # Detection step: find faces in the image using haar cascade .xml file and detectMultiScale() function
-        faces = FaceDetection.FACE_CASCADE.detectMultiScale(image=img_rgb, scaleFactor=1.1, minNeighbors=8)
+        faces = FaceDetection.FACE_CASCADE.detectMultiScale(image=img_rgb, scaleFactor=1.1, minNeighbors=10)
 
         # draw rectangle around detected face(s)
         for (x, y, w, h) in faces:
@@ -124,27 +129,29 @@ class HandDetection(Detection):
     MP_DRAW_MODULE = mp.solutions.drawing_utils
 
     def __init__(self, video_frame: tk.Label) -> None:
-        self._run_detections: bool = True
+        self._detections_running: bool = False
         self._video_frame = video_frame
         self._current_frame: ImageTk.PhotoImage = ImageTk.PhotoImage(Image.open('./images/video_frame_default.gif'))
-        self._video_frame.after(0, self._detect, cv2.VideoCapture(0, cv2.CAP_DSHOW))
 
     @property
-    def run_detections(self) -> bool:
-        return self._run_detections
+    def detections_running(self) -> bool:
+        return self._detections_running
 
-    @run_detections.setter
-    def run_detections(self, run_detections: bool) -> None:
-        self._run_detections = run_detections
+    @detections_running.setter
+    def detections_running(self, detections_running: bool) -> None:
+        self._detections_running = detections_running
+
+    def begin_detection(self) -> None:
+        self._video_frame.after(1, self._detect, cv2.VideoCapture(0, cv2.CAP_DSHOW))
 
     def _detect(self, webcam_feed: cv2.VideoCapture) -> None:
-        if self._run_detections:
+        if self._detections_running:
             img_array_with_detections: np.ndarray = self._analyze_image(webcam_feed)
             self._current_frame: ImageTk.PhotoImage = Detection._to_photo_image(img_array_with_detections)
             self._update_frame()
 
-        # recursively call _detect() method to perform detections on next frame
-        self._video_frame.after(1, self._detect, webcam_feed)
+            # recursively call _detect() method to perform detections on next frame
+            self._video_frame.after(1, self._detect, webcam_feed)
 
     def _analyze_image(self, webcam_feed: cv2.VideoCapture) -> np.ndarray:
         # read() returns a tuple of a read success flag and a 3D ndarray
