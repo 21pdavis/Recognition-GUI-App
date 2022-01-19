@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import messagebox
 from abc import ABC, abstractmethod
 
 import cv2
@@ -8,21 +9,26 @@ from PIL import Image, ImageOps, ImageTk
 
 
 class Detection(ABC):
-    @property
     @abstractmethod
+    def __init__(self, video_frame: tk.Label) -> None:
+        self._run_detections: bool = False
+        self._video_frame: tk.Label = video_frame
+        self._current_frame: ImageTk.PhotoImage = ImageTk.PhotoImage(Image.open('./images/video_frame_default.gif'))
+
+    @property
     def detections_running(self) -> bool:
         """ Getter for the bool flag used to start and stop detections """
+        return self._run_detections
 
     @detections_running.setter
-    @abstractmethod
     def detections_running(self, run_detections: bool) -> None:
         """ Setter for the bool flag used to start and stop detections """
+        self._run_detections = run_detections
 
-    @abstractmethod
-    def begin_detection(self):
+    def begin_detection(self) -> None:
         """ public function for starting detection """
+        self._video_frame.after(1, self._detect, cv2.VideoCapture(0, cv2.CAP_DSHOW))
 
-    @abstractmethod
     def _detect(self, webcam_feed: cv2.VideoCapture) -> None:
         """ Begin image processing and detection
 
@@ -33,6 +39,17 @@ class Detection(ABC):
         Will then convert the final img NumPy arrays into PhotoImage
         objects to post to the GUI
         """
+        if self.detections_running:
+            img_array_with_detections: np.ndarray = self._analyze_image(webcam_feed)
+            if img_array_with_detections.any():
+                self._current_frame: ImageTk.PhotoImage = Detection._to_photo_image(img_array_with_detections)
+                self._update_frame()
+                # recursively call _detect() method to perform detections on next frame
+                self._video_frame.after(1, self._detect, webcam_feed)
+
+    def _update_frame(self) -> None:
+        """ Update the image label with the current frame with detections drawn on """
+        self._video_frame.configure(image=self._current_frame)
 
     @abstractmethod
     def _analyze_image(self, webcam_feed: cv2.VideoCapture) -> np.ndarray:
@@ -43,10 +60,6 @@ class Detection(ABC):
 
         Returns the img object NumPy array with detections drawn on
         """
-
-    @abstractmethod
-    def _update_frame(self) -> None:
-        """ Update the image label with the current frame with detections drawn on """
 
     @staticmethod
     def _to_photo_image(img_array: np.ndarray) -> tk.PhotoImage:
@@ -69,48 +82,26 @@ class FaceDetection(Detection):
     FACE_CASCADE = cv2.CascadeClassifier('./cascades/haarcascade_frontalface_default.xml')
 
     def __init__(self, video_frame: tk.Label) -> None:
-        self._run_detections: bool = False
-        self._video_frame: tk.Label = video_frame
-        self._current_frame: ImageTk.PhotoImage = ImageTk.PhotoImage(Image.open('./images/video_frame_default.gif'))
-
-    @property
-    def detections_running(self) -> bool:
-        return self._run_detections
-
-    @detections_running.setter
-    def detections_running(self, run_detections: bool) -> None:
-        self._run_detections = run_detections
-
-    def begin_detection(self) -> None:
-        self._video_frame.after(1, self._detect, cv2.VideoCapture(0, cv2.CAP_DSHOW))
-
-    def _detect(self, webcam_feed: cv2.VideoCapture) -> None:
-        if self._run_detections:
-            img_array_with_detections: np.ndarray = self._analyze_image(webcam_feed)
-            self._current_frame: ImageTk.PhotoImage = Detection._to_photo_image(img_array_with_detections)
-            self._update_frame()
-            # recursively call _detect() method to perform detections on next frame
-            self._video_frame.after(1, self._detect, webcam_feed)
+        super().__init__(video_frame)
 
     def _analyze_image(self, webcam_feed: cv2.VideoCapture) -> np.ndarray:
-        # read() returns a tuple of a read success flag and a 3D ndarray
-        flag, img = webcam_feed.read()
+        try:
+            # read() returns a tuple of a read success flag and a 3D ndarray
+            flag, img = webcam_feed.read()
 
-        # shift color for detection
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            # shift color for detection
+            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        # Detection step: find faces in the image using haar cascade .xml file and detectMultiScale() function
-        faces = FaceDetection.FACE_CASCADE.detectMultiScale(image=img_rgb, scaleFactor=1.1, minNeighbors=10)
+            # Detection step: find faces in the image using haar cascade .xml file and detectMultiScale() function
+            faces = FaceDetection.FACE_CASCADE.detectMultiScale(image=img_rgb, scaleFactor=1.1, minNeighbors=6)
 
-        # draw rectangle around detected face(s)
-        for (x, y, w, h) in faces:
-            cv2.rectangle(img=img, pt1=(x, y), pt2=(x + w, y + h), color=(0, 0, 255), thickness=2, lineType=cv2.FILLED)
+            # draw rectangle around detected face(s)
+            for (x, y, w, h) in faces:
+                cv2.rectangle(img=img, pt1=(x, y), pt2=(x + w, y + h), color=(0, 0, 255), thickness=2, lineType=cv2.FILLED)
 
-        return img
-
-    # def _update_frame(self, final_img: tk.PhotoImage) -> None:
-    def _update_frame(self):
-        self._video_frame.configure(image=self._current_frame)
+            return img
+        except cv2.error:
+            messagebox.showinfo(title='No Camera', message='No compatible camera is plugged in')
 
 
 class HandDetection(Detection):
@@ -129,51 +120,32 @@ class HandDetection(Detection):
     MP_DRAW_MODULE = mp.solutions.drawing_utils
 
     def __init__(self, video_frame: tk.Label) -> None:
-        self._detections_running: bool = False
-        self._video_frame = video_frame
-        self._current_frame: ImageTk.PhotoImage = ImageTk.PhotoImage(Image.open('./images/video_frame_default.gif'))
-
-    @property
-    def detections_running(self) -> bool:
-        return self._detections_running
-
-    @detections_running.setter
-    def detections_running(self, detections_running: bool) -> None:
-        self._detections_running = detections_running
-
-    def begin_detection(self) -> None:
-        self._video_frame.after(1, self._detect, cv2.VideoCapture(0, cv2.CAP_DSHOW))
-
-    def _detect(self, webcam_feed: cv2.VideoCapture) -> None:
-        if self._detections_running:
-            img_array_with_detections: np.ndarray = self._analyze_image(webcam_feed)
-            self._current_frame: ImageTk.PhotoImage = Detection._to_photo_image(img_array_with_detections)
-            self._update_frame()
-
-            # recursively call _detect() method to perform detections on next frame
-            self._video_frame.after(1, self._detect, webcam_feed)
+        super().__init__(video_frame)
 
     def _analyze_image(self, webcam_feed: cv2.VideoCapture) -> np.ndarray:
-        # read() returns a tuple of a read success flag and a 3D ndarray
-        flag, img = webcam_feed.read()
+        try:
+            # read() returns a tuple of a read success flag and a 3D ndarray
+            flag, img = webcam_feed.read()
 
-        # shift color for detection
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            # shift color for detection
+            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        # Detection step: use mediapipe library to identify hands in the image
-        results = HandDetection.HANDS_OBJ.process(img_rgb)
+            # Detection step: use mediapipe library to identify hands in the image
+            results = HandDetection.HANDS_OBJ.process(img_rgb)
 
-        if results.multi_hand_landmarks:
-            for handLms in results.multi_hand_landmarks:
-                for id, lm in enumerate(handLms.landmark):
-                    h, w, c = img.shape
-                    cx, cy = int(lm.x * w), int(lm.y * h)
-                    cv2.circle(img=img, center=(cx, cy), radius=6, color=(255, 255, 255),
-                               lineType=cv2.FILLED)  # draw landmark circles
+            if results.multi_hand_landmarks:
+                for handLms in results.multi_hand_landmarks:
+                    for id, lm in enumerate(handLms.landmark):
+                        h, w, c = img.shape
+                        cx, cy = int(lm.x * w), int(lm.y * h)
+                        cv2.circle(img=img, center=(cx, cy), radius=6, color=(255, 255, 255),
+                                   lineType=cv2.FILLED)  # draw landmark circles
 
-                HandDetection.MP_DRAW_MODULE.draw_landmarks(img, handLms, HandDetection.HANDS_CONNECTIONS)
+                    HandDetection.MP_DRAW_MODULE.draw_landmarks(img, handLms, HandDetection.HANDS_CONNECTIONS)
 
-        return img
+            return img
+        except cv2.error:
+            messagebox.showinfo(title='No Camera', message='No compatible camera is plugged in')
 
     def _update_frame(self) -> None:
         self._video_frame.configure(image=self._current_frame)
