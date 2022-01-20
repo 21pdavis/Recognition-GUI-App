@@ -44,16 +44,7 @@ class MainGUI(tk.Frame):
             'video_frame_default_image': ImageTk.PhotoImage(Image.open('./images/video_frame_default.gif'))
         }
 
-        # init widgets
-        self._buttons: dict = {
-            'face_button': tk.Button(self, bg=MainGUI.COLORS['button_bg'], command=self._face_click,
-                                     fg=MainGUI.COLORS['button_fg'], text='Toggle Facial Recognition', width=0),
-            'hand_button': tk.Button(self, bg=MainGUI.COLORS['button_bg'], command=self._hand_click,
-                                     fg=MainGUI.COLORS['button_fg'], text='Toggle Hand Recognition', width=0),
-            'exit_button': tk.Button(self, bg=MainGUI.COLORS['button_bg'], command=self._exit_click,
-                                     fg=MainGUI.COLORS['button_fg'], text='Exit', width=15)
-        }
-
+        # init labels
         self._labels: dict = {
             'title_label': tk.Label(self, bg=MainGUI.COLORS['label_bg'], fg=MainGUI.COLORS['label_fg'],
                                     text='Welcome to the Recognition Suite!', font='none 20 bold'),
@@ -65,19 +56,29 @@ class MainGUI(tk.Frame):
                                           bg=MainGUI.COLORS['image_bg'], height=576, width=1024, borderwidth=2),
         }
 
-        # self._scrollbar = tk.Scrollbar(self, orient="vertical")
+        # detection objects for later use
+        self._detections = {
+            'face_detection': detections.FaceDetection(video_frame=self._labels['video_frame_label']),
+            'hand_detection': detections.HandDetection(video_frame=self._labels['video_frame_label'])
+        }
+
+        # init buttons
+        self._buttons: dict = {
+            'face_button': tk.Button(self, bg=MainGUI.COLORS['button_bg'], command=lambda: self._detection_click(self._detections['face_detection']),
+                                     fg=MainGUI.COLORS['button_fg'], text='Toggle Facial Recognition', width=0),
+            'hand_button': tk.Button(self, bg=MainGUI.COLORS['button_bg'], command=lambda: self._detection_click(self._detections['hand_detection']),
+                                     fg=MainGUI.COLORS['button_fg'], text='Toggle Hand Recognition', width=0),
+            'exit_button': tk.Button(self, bg=MainGUI.COLORS['button_bg'], command=self._exit_click,
+                                     fg=MainGUI.COLORS['button_fg'], text='Exit', width=15)
+        }
+
 
         # additional window configuration and widget placement
         parent_root.title("Recognition Suite")
         self.configure(bg=MainGUI.COLORS['window_bg'], height=0, width=0)
         self._place_elements()
 
-        # detection objects for later use
-        self._face_detection = detections.FaceDetection(video_frame=self._labels['video_frame_label'])
-        self._hand_detection = detections.HandDetection(video_frame=self._labels['video_frame_label'])
-
     def _place_elements(self) -> None:
-        # TODO: compress GUI
         # ROW 0
         self._labels['title_label'].grid(row=0, column=0, padx=(25, 0), sticky=tk.W)  # title label
         # ROW 1
@@ -92,27 +93,18 @@ class MainGUI(tk.Frame):
         self._buttons['exit_button'].grid(row=4, column=0, padx=(25, 0), pady=(15, 10), sticky=tk.NW)  # exit bt
 
     def _detection_click(self, detection: detections.Detection):
-        pass
+        for detection_type in self._detections:
+            if self._detections[detection_type] == detection:
+                continue
+            self._detections[detection_type].detections_running = False
+            self._labels['video_frame_label'].configure(image=self._images['video_frame_default_image'])
 
-    def _face_click(self) -> None:
-        # TODO: Consolidate click methods with detection type as argument
-        # TODO: Implement clean swap between face/hand detection
-        if self._face_detection.detections_running:
-            self._face_detection.detections_running = False
+        if detection.detections_running:
+            detection.detections_running = False
             self._labels['video_frame_label'].configure(image=self._images['video_frame_default_image'])
         else:
-            self._face_detection.detections_running = True
-            self._face_detection.begin_detection()
-
-    def _hand_click(self) -> None:
-        # TODO: Consolidate click methods with detection type as argument
-        # TODO: Implement clean swap between face/hand detection
-        if self._hand_detection.detections_running:
-            self._hand_detection.detections_running = False
-            self._labels['video_frame_label'].configure(image=self._images['video_frame_default_image'])
-        else:
-            self._hand_detection.detections_running = True
-            self._hand_detection.begin_detection()
+            detection.detections_running = True
+            detection.begin_detection()
 
     def _exit_click(self) -> None:
         """ Safely stop execution of program """
@@ -121,7 +113,7 @@ class MainGUI(tk.Frame):
 
 if __name__ == '__main__':
     root = tk.Tk()
-    # root window's hxw are set to 0x0 by default, but just explicitly declaring it here for debugging
+    # root window's height x width are set to 0x0 by default, but just explicitly declaring it here for debugging
     root.configure(width=0, height=0)
     MainGUI(root).grid(row=0, column=0, sticky=tk.NW)
     root.mainloop()

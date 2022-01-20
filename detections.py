@@ -11,19 +11,19 @@ from PIL import Image, ImageOps, ImageTk
 class Detection(ABC):
     @abstractmethod
     def __init__(self, video_frame: tk.Label) -> None:
-        self._run_detections: bool = False
+        self._detections_running: bool = False
         self._video_frame: tk.Label = video_frame
         self._current_frame: ImageTk.PhotoImage = ImageTk.PhotoImage(Image.open('./images/video_frame_default.gif'))
 
     @property
     def detections_running(self) -> bool:
         """ Getter for the bool flag used to start and stop detections """
-        return self._run_detections
+        return self._detections_running
 
     @detections_running.setter
-    def detections_running(self, run_detections: bool) -> None:
+    def detections_running(self, detections_running: bool) -> None:
         """ Setter for the bool flag used to start and stop detections """
-        self._run_detections = run_detections
+        self._detections_running = detections_running
 
     def begin_detection(self) -> None:
         """ public function for starting detection """
@@ -41,11 +41,13 @@ class Detection(ABC):
         """
         if self.detections_running:
             img_array_with_detections: np.ndarray = self._analyze_image(webcam_feed)
-            if img_array_with_detections.any():
+            if img_array_with_detections is not None:
                 self._current_frame: ImageTk.PhotoImage = Detection._to_photo_image(img_array_with_detections)
                 self._update_frame()
                 # recursively call _detect() method to perform detections on next frame
                 self._video_frame.after(1, self._detect, webcam_feed)
+        else:
+            webcam_feed.release()
 
     def _update_frame(self) -> None:
         """ Update the image label with the current frame with detections drawn on """
@@ -102,6 +104,7 @@ class FaceDetection(Detection):
             return img
         except cv2.error:
             messagebox.showinfo(title='No Camera', message='No compatible camera is plugged in')
+            self._detections_running = False
 
 
 class HandDetection(Detection):
@@ -146,6 +149,7 @@ class HandDetection(Detection):
             return img
         except cv2.error:
             messagebox.showinfo(title='No Camera', message='No compatible camera is plugged in')
+            self._detections_running = False
 
     def _update_frame(self) -> None:
         self._video_frame.configure(image=self._current_frame)
