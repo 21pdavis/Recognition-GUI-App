@@ -113,6 +113,7 @@ class MainGUI(tk.Frame):
         if running_detection:
             if running_detection == detection:  # toggle off current detection (case 2)
                 detection.detections_running = False
+                detection.webcam_feed = None
                 self._labels['video_frame_label'].configure(image=self._images['video_frame_default_image'])
             else:  # pass video camera object over from running detection to new detection (case 3)
                 detection.detections_running = True

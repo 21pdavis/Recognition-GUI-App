@@ -17,6 +17,14 @@ class Detection(ABC):
         self._webcam_feed = None
 
     @property
+    def webcam_feed(self) -> cv2.VideoCapture:
+        return self._webcam_feed
+
+    @webcam_feed.setter
+    def webcam_feed(self, webcam_feed: cv2.VideoCapture) -> None:
+        self._webcam_feed = webcam_feed
+
+    @property
     def detections_running(self) -> bool:
         """ Getter for the bool flag used to start and stop detections """
         return self._detections_running
@@ -26,18 +34,20 @@ class Detection(ABC):
         """ Setter for the bool flag used to start and stop detections """
         self._detections_running = detections_running
 
-    def begin_detection(self, webcam_feed: cv2.VideoCapture = None) -> None:
+    def begin_detection(self) -> None:
         """ public function for starting detection """
-        if webcam_feed:
-            self._webcam_feed = webcam_feed
-            self._video_frame.after(1, self._detect, webcam_feed)
+        if self._webcam_feed:
+            self._video_frame.after(1, self._detect, self._webcam_feed)
         else:
             self._webcam_feed = cv2.VideoCapture(0, cv2.CAP_DSHOW)
             self._video_frame.after(1, self._detect, self._webcam_feed)
 
     def switch_detection(self, detection):
         self._detections_running = False
-        detection.begin_detection(self._webcam_feed)
+        detection.webcam_feed = self._webcam_feed
+        self._webcam_feed = None
+
+        detection.begin_detection()
 
     def _detect(self, webcam_feed: cv2.VideoCapture) -> None:
         """ Begin image processing and detection
