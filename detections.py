@@ -14,6 +14,7 @@ class Detection(ABC):
         self._detections_running: bool = False
         self._video_frame: tk.Label = video_frame
         self._current_frame: ImageTk.PhotoImage = ImageTk.PhotoImage(Image.open('./images/video_frame_default.gif'))
+        self._webcam_feed = None
 
     @property
     def detections_running(self) -> bool:
@@ -25,9 +26,18 @@ class Detection(ABC):
         """ Setter for the bool flag used to start and stop detections """
         self._detections_running = detections_running
 
-    def begin_detection(self) -> None:
+    def begin_detection(self, webcam_feed: cv2.VideoCapture = None) -> None:
         """ public function for starting detection """
-        self._video_frame.after(1, self._detect, cv2.VideoCapture(0, cv2.CAP_DSHOW))
+        if webcam_feed:
+            self._webcam_feed = webcam_feed
+            self._video_frame.after(1, self._detect, webcam_feed)
+        else:
+            self._webcam_feed = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+            self._video_frame.after(1, self._detect, self._webcam_feed)
+
+    def switch_detection(self, detection):
+        self._detections_running = False
+        detection.begin_detection(self._webcam_feed)
 
     def _detect(self, webcam_feed: cv2.VideoCapture) -> None:
         """ Begin image processing and detection
@@ -46,8 +56,6 @@ class Detection(ABC):
                 self._update_frame()
                 # recursively call _detect() method to perform detections on next frame
                 self._video_frame.after(1, self._detect, webcam_feed)
-        else:
-            webcam_feed.release()
 
     def _update_frame(self) -> None:
         """ Update the image label with the current frame with detections drawn on """
@@ -150,6 +158,3 @@ class HandDetection(Detection):
         except cv2.error:
             messagebox.showinfo(title='No Camera', message='No compatible camera is plugged in')
             self._detections_running = False
-
-    def _update_frame(self) -> None:
-        self._video_frame.configure(image=self._current_frame)

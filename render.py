@@ -1,14 +1,10 @@
-import tkinter
 import tkinter as tk
-from tkinter import messagebox
-from time import sleep
 
 from PIL import ImageTk, Image
+
 import detections
-import cv2
 
 
-# TODO: add scrollbar
 class MainGUI(tk.Frame):
     """
     MainGUI class initializes the tkinter GUI window and handles event listening
@@ -30,7 +26,8 @@ class MainGUI(tk.Frame):
     def __init__(self, parent_root: tk.Tk) -> None:
         """ Initializes Tkinter window and starts mainloop() """
         # call superclass, tk.Frame, __init__
-        super().__init__(master=parent_root)
+        self._parent_root = parent_root
+        super().__init__(master=self._parent_root)
 
         # init PIL PhotoImage objects (to be displayed in labels)
         self._images: dict = {
@@ -64,21 +61,23 @@ class MainGUI(tk.Frame):
 
         # init buttons
         self._buttons: dict = {
-            'face_button': tk.Button(self, bg=MainGUI.COLORS['button_bg'], command=lambda: self._detection_click(self._detections['face_detection']),
+            'face_button': tk.Button(self, bg=MainGUI.COLORS['button_bg'],
+                                     command=lambda: self._detection_click(self._detections['face_detection']),
                                      fg=MainGUI.COLORS['button_fg'], text='Toggle Facial Recognition', width=0),
-            'hand_button': tk.Button(self, bg=MainGUI.COLORS['button_bg'], command=lambda: self._detection_click(self._detections['hand_detection']),
+            'hand_button': tk.Button(self, bg=MainGUI.COLORS['button_bg'],
+                                     command=lambda: self._detection_click(self._detections['hand_detection']),
                                      fg=MainGUI.COLORS['button_fg'], text='Toggle Hand Recognition', width=0),
             'exit_button': tk.Button(self, bg=MainGUI.COLORS['button_bg'], command=self._exit_click,
                                      fg=MainGUI.COLORS['button_fg'], text='Exit', width=15)
         }
 
-
         # additional window configuration and widget placement
         parent_root.title("Recognition Suite")
         self.configure(bg=MainGUI.COLORS['window_bg'], height=0, width=0)
-        self._place_elements()
+        self._place_widgets()
 
-    def _place_elements(self) -> None:
+    def _place_widgets(self) -> None:
+        """ Place widgets within the frame using tkinter grid layout """
         # ROW 0
         self._labels['title_label'].grid(row=0, column=0, padx=(25, 0), sticky=tk.W)  # title label
         # ROW 1
@@ -93,27 +92,43 @@ class MainGUI(tk.Frame):
         self._buttons['exit_button'].grid(row=4, column=0, padx=(25, 0), pady=(15, 10), sticky=tk.NW)  # exit bt
 
     def _detection_click(self, detection: detections.Detection):
-        for detection_type in self._detections:
-            if self._detections[detection_type] == detection:
-                continue
-            self._detections[detection_type].detections_running = False
-            self._labels['video_frame_label'].configure(image=self._images['video_frame_default_image'])
+        """ Generic function for starting/stopping detections
 
-        if detection.detections_running:
-            detection.detections_running = False
-            self._labels['video_frame_label'].configure(image=self._images['video_frame_default_image'])
-        else:
+        Cases:
+        1. No detections running => start detection on the designated detection
+        2. Detection running matches button clicked => stop corresponding detection
+        3. Detection running is different from button clicked => swap video capture object from currently running
+                                                                  detection to new detection
+
+        :param detections.Detections detection: the detection object that corresponds to the button pressed
+        """
+        # Find which detection is running
+        running_detection = None
+        for detection_type in self._detections:
+            current_detection: detections.Detection = self._detections[detection_type]
+            if current_detection.detections_running:
+                running_detection = current_detection
+
+        # logic for handling different statuses of running detections
+        if running_detection:
+            if running_detection == detection:  # toggle off current detection (case 2)
+                detection.detections_running = False
+                self._labels['video_frame_label'].configure(image=self._images['video_frame_default_image'])
+            else:  # pass video camera object over from running detection to new detection (case 3)
+                detection.detections_running = True
+                running_detection.switch_detection(detection)
+        else:  # start up designated detection (case 1)
             detection.detections_running = True
             detection.begin_detection()
 
     def _exit_click(self) -> None:
         """ Safely stop execution of program """
-        self.destroy()
+        self._parent_root.destroy()
 
 
 if __name__ == '__main__':
     root = tk.Tk()
-    # root window's height x width are set to 0x0 by default, but just explicitly declaring it here for debugging
+    # root window's height x width are set to 0x0 by default, but just explicitly declaring it here
     root.configure(width=0, height=0)
     MainGUI(root).grid(row=0, column=0, sticky=tk.NW)
     root.mainloop()
