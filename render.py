@@ -91,7 +91,7 @@ class MainGUI(tk.Frame):
         # ROW 4
         self._buttons['exit_button'].grid(row=4, column=0, padx=(25, 0), pady=(15, 10), sticky=tk.NW)  # exit bt
 
-    def _detection_click(self, detection: detections.Detection):
+    def _detection_click(self, detection: detections.Detection) -> None:
         """ Generic function for starting/stopping detections
 
         Cases:

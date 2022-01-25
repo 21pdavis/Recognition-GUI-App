@@ -42,7 +42,7 @@ class Detection(ABC):
             self._webcam_feed = cv2.VideoCapture(0, cv2.CAP_DSHOW)
             self._video_frame.after(1, self._detect, self._webcam_feed)
 
-    def switch_detection(self, detection):
+    def switch_detection(self, detection) -> None:
         self._detections_running = False
         detection.webcam_feed = self._webcam_feed
         self._webcam_feed = None
