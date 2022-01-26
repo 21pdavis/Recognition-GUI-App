@@ -99,8 +99,6 @@ class MainGUI(tk.Frame):
         2. Detection running matches button clicked => stop corresponding detection
         3. Detection running is different from button clicked => swap video capture object from currently running
                                                                   detection to new detection
-
-        :param detections.Detections detection: the detection object that corresponds to the button pressed
         """
         # Find which detection is running
         running_detection = None
